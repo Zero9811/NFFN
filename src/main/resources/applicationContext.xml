@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--配置数据源-->
+    <!--导入资源文件-->
+    <context:property-placeholder location="classpath:db.properties"/>
+
+    <bean id = "dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="user" value="${jdbc.username}"></property>
+        <property name="password" value="${jdbc.password}"></property>
+        <property name="driverClass" value="${jdbc.driverName}"></property>
+        <property name="jdbcUrl" value="${jdbc.url}"></property>
+        <property name="initialPoolSize" value="${jdbc.initPoolSize}"></property>
+        <property name="maxPoolSize" value="${jdbc.maxPoolSize}"></property>
+    </bean>
+
+    <!--配置hibernate的sessionFactory实例-->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+
+        <!--自动扫描注解方式配置的hibernate类-->
+        <property name="packagesToScan">
+            <list>
+                <value>xin.zachary.nffn.entity</value>
+            </list>
+        </property>
+
+        <property name="dataSource" ref="dataSource"></property>
+        <!--通过配置引用配置文件的方式-->
+        <!--<property name="configLocation" value="classpath:hibernate.cfg.xml"></property>-->
+        <!--直接在这里配置-->
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                <prop key="hbm2ddl.auto">update</prop>
+                <prop key="show_sql">true</prop>
+                <prop key="format_sql">true</prop>
+                <!--下面是自动提交事务的配置-->
+                <prop key="hibernate.connection.autocommit">true</prop>
+                <!--如果使用的getCurrentSession的话一定要加下面这句话-->
+                <prop key="current_session_context_class">thread</prop>
+            </props>
+        </property>
+
+    </bean>
+
+    <!--配置声明式事务-->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+    <bean id="persistenceExceptionTranslationPostProcessor" class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor"></bean>
+
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="get" read-only="true"/>
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+    <aop:config proxy-target-class="true">
+        <aop:pointcut id="txPointcut" expression="execution(* xin.zachary.nffn.*.*.*(..))"></aop:pointcut>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"></aop:advisor>
+    </aop:config>
+
+    <aop:aspectj-autoproxy proxy-target-class="true"></aop:aspectj-autoproxy>
+
+    <context:annotation-config></context:annotation-config>
+    <context:component-scan base-package="xin"></context:component-scan>
+
+    <!--<bean id="userDAO" class="xin.zachary.nffn.daoimpl.UserDAOImpl"></bean>-->
+</beans>
